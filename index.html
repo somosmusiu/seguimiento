@@ -1,0 +1,271 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seguimiento de tu pedido | MUSIÚ</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #101010;
+  color: #fff;
+  font-family: Arial, sans-serif;
+}
+.contenedor {
+  max-width: 460px;
+  margin: auto;
+  padding: 25px 22px 45px;
+}
+.logo {
+  width: 180px;
+  height: 180px;
+  border: 2px solid #d6b46a;
+  border-radius: 50%;
+  margin: 0 auto 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+.logo h1 {
+  color: #f5e5c8;
+  font-size: 43px;
+  margin: 0;
+  letter-spacing: -2px;
+}
+.logo .linea {
+  background: #d6b46a;
+  width: 110px;
+  height: 4px;
+  transform: rotate(-5deg);
+}
+.logo small {
+  color: #d6b46a;
+  font-size: 8px;
+  margin-top: 13px;
+}
+.centro { text-align: center; }
+.subtitulo {
+  color: #d6b46a;
+  font-size: 14px;
+  font-weight: bold;
+}
+.numero {
+  font-size: 36px;
+  margin: 22px 0;
+}
+.estado-actual {
+  font-size: 25px;
+  color: #d6b46a;
+  margin-bottom: 16px;
+}
+.descripcion {
+  color: #bbb;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.separador {
+  border: 0;
+  border-top: 1px solid #514737;
+  margin: 35px 0;
+}
+.paso {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 35px;
+}
+.icono {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #292929;
+  color: #aaa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 25px;
+}
+.paso.activo .icono {
+  background: #d6b46a;
+  color: #101010;
+}
+.nombre {
+  font-size: 20px;
+  font-weight: bold;
+  color: #999;
+}
+.paso.activo .nombre { color: #d6b46a; }
+</style>
+</head>
+<body>
+<div class="contenedor">
+  <div class="logo">
+    <h1>MUSIÚ</h1>
+    <div class="linea"></div>
+    <small>MÁS QUE PIZZA, UNA EXPERIENCIA</small>
+  </div>
+
+  <div class="centro">
+    <div class="subtitulo">SEGUIMIENTO DE TU EXPERIENCIA</div>
+    <h1 class="numero" id="numero">Pedido #123</h1>
+    <h2 class="estado-actual" id="estadoActual"></h2>
+    <p class="descripcion" id="descripcionActual"></p>
+  </div>
+
+  <hr class="separador">
+
+  <div id="pasos"></div>
+</div>
+
+<script>
+const estados = [
+  {
+    clave: "recibido",
+    titulo: "Pedido confirmado",
+    descripcion: "¡Recibimos tu pedido! Pronto comenzaremos a prepararlo.",
+    icono: "☑"
+  },
+  {
+    clave: "preparacion",
+    titulo: "Preparando tu pedido",
+    descripcion: "Estamos preparando tu pedido con mucho cuidado.",
+    icono: "♨"
+  },
+  {
+    clave: "listo",
+    titulo: "Pedido listo",
+    descripcion: "¡Tu pedido está listo para salir!",
+    icono: "▣"
+  },
+  {
+    clave: "en_camino",
+    titulo: "Tu pedido va en camino",
+    descripcion: "¡Ya salió de MUSIÚ y va rumbo a ti!",
+    icono: "♧"
+  },
+  {
+    clave: "entregado",
+    titulo: "Pedido entregado",
+    descripcion: "¡Buen provecho! Gracias por elegir MUSIÚ.",
+    icono: "✓"
+  }
+];
+
+
+const SUPABASE_URL =
+  "https://zvruieqqzknljoylrhjp.supabase.co";
+
+// Aquí colocarás tu clave publicable de Supabase.
+const SUPABASE_KEY = "sb_publishable_zRoz-osrAzL8khVnatcbKw_Zrcz5Tw7";
+
+async function consultarPedido() {
+  const parametros = new URLSearchParams(window.location.search);
+  const codigo = parametros.get("codigo");
+
+  if (!codigo) {
+    document.getElementById("estadoActual").textContent =
+      "Código de seguimiento no encontrado";
+    document.getElementById("descripcionActual").textContent =
+      "Abre el enlace que recibiste por WhatsApp.";
+    document.getElementById("pasos").replaceChildren();
+    document.getElementById("numero").textContent = "MUSIÚ";
+    return;
+  }
+
+  try {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/consultar_seguimiento_cliente`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_KEY
+        },
+        body: JSON.stringify({ p_codigo: codigo })
+      }
+    );
+
+    if (!respuesta.ok) {
+      throw new Error(`Error HTTP ${respuesta.status}`);
+    }
+
+    const datos = await respuesta.json();
+
+    if (!Array.isArray(datos) || datos.length === 0) {
+      throw new Error("Pedido no encontrado");
+    }
+
+    const pedido = datos[0];
+
+    document.getElementById("numero").textContent =
+      `Pedido #${pedido.numero_pedido}`;
+
+    if (pedido.estado === "cancelado") {
+      document.getElementById("estadoActual").textContent =
+        "Pedido cancelado";
+      document.getElementById("descripcionActual").textContent =
+        "Comunícate con MUSIÚ si necesitas ayuda.";
+      document.getElementById("pasos").replaceChildren();
+      return;
+    }
+
+    mostrarSeguimiento(pedido.estado);
+
+  } catch (error) {
+    document.getElementById("estadoActual").textContent =
+      "No pudimos consultar tu pedido";
+    document.getElementById("descripcionActual").textContent =
+      "Verifica tu enlace e intenta nuevamente.";
+    document.getElementById("pasos").replaceChildren();
+    console.error(error);
+  }
+}
+
+consultarPedido();
+setInterval(consultarPedido, 15000);
+
+
+function mostrarSeguimiento(estado) {
+  const indice = estados.findIndex(e => e.clave === estado);
+  const actual = estados[indice];
+
+  if (!actual) {
+    document.getElementById("estadoActual").textContent =
+      "Estado no disponible";
+    document.getElementById("descripcionActual").textContent = "";
+    document.getElementById("pasos").replaceChildren();
+    return;
+  }
+
+  document.getElementById("estadoActual").textContent = actual.titulo;
+  document.getElementById("descripcionActual").textContent =
+    actual.descripcion;
+
+  const contenedor = document.getElementById("pasos");
+  contenedor.replaceChildren();
+
+  estados.forEach((paso, i) => {
+    const fila = document.createElement("div");
+    fila.className = "paso" + (i <= indice ? " activo" : "");
+
+    const icono = document.createElement("div");
+    icono.className = "icono";
+    icono.textContent = paso.icono;
+
+    const nombre = document.createElement("div");
+    nombre.className = "nombre";
+    nombre.textContent = paso.titulo;
+
+    fila.append(icono, nombre);
+    contenedor.appendChild(fila);
+  });
+}
+
+
+</script>
+</body>
+</html>
