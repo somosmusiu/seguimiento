@@ -81,10 +81,19 @@ async function consultarPedido() {
     });
     if (!respuesta.ok) throw new Error(`Error HTTP ${respuesta.status}`);
     const datos = await respuesta.json();
-    if (!Array.isArray(datos) || datos.length === 0) throw new Error("Pedido no encontrado");
+    if (!Array.isArray(datos) || datos.length === 0) {
+  mostrarCaducado();
+  return;
+}
     const pedido = datos[0];
     document.getElementById("numero").textContent = `Pedido #${pedido.numero_pedido}`;
-    if (pedido.estado === "cancelado") {
+    if (
+  pedido.estado === "entregado" ||
+  pedido.estado === "cancelado"
+) {
+  mostrarCaducado();
+  return;
+}
       document.getElementById("estadoActual").textContent = "Pedido cancelado";
       document.getElementById("descripcionActual").textContent = "Comunícate con MUSIÚ si necesitas ayuda.";
       document.getElementById("pasos").replaceChildren();
@@ -101,6 +110,14 @@ async function consultarPedido() {
 consultarPedido();
 setInterval(consultarPedido, 15000);
 
+  function mostrarCaducado() {
+  document.getElementById("numero").textContent = "404";
+  document.getElementById("estadoActual").textContent =
+    "Página no disponible";
+  document.getElementById("descripcionActual").textContent =
+    "Este enlace de seguimiento ha caducado o ya no existe.";
+  document.getElementById("pasos").replaceChildren();
+}
 function mostrarSeguimiento(estado) {
   const indice = estados.findIndex(e => e.clave === estado);
   const actual = estados[indice];
